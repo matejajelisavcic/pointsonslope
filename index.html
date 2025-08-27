@@ -73,8 +73,8 @@
             katex.render(latex, el, { throwOnError: false });
         }
         function render() {
-            renderLatex('latex-formula', `y = ${state.m}x ${state.b >= 0 ? '+' : ''}${state.b}`);
-            renderLatex('latex-point', `(${state.x},\;${state.y})`);
+            renderLatex('latex-formula', `y = ${state.m}x ${state.b >= 0 ? '+ ' : '- '}${Math.abs(state.b)}`);
+            renderLatex('latex-point', `\\left(${state.x},\;${state.y}\\right)`);
             document.getElementById('latex-answer').innerHTML = '';
             document.getElementById('canvas').style.display = 'none';
             document.getElementById('again-btn').style.display = 'none';
@@ -84,23 +84,27 @@
         }
         function showAnswer(userAnswer) {
             state.answered = true;
+            state.lastUserAnswer = userAnswer;
             let correct = (state.onLine && userAnswer === 'yes') || (!state.onLine && userAnswer === 'no');
-            let answerLatex = `y = ${state.m} \times ${state.x} ${state.b >= 0 ? '+' : ''}${state.b} = ${state.m * state.x + state.b}`;
+            let answerLatex = `y = ${state.m} \\cdot ${state.x} ${state.b >= 0 ? '+ ' : '- '}${Math.abs(state.b)} = ${state.m * state.x + state.b}`;
             let isOnLine = (state.y === state.m * state.x + state.b);
             let result = isOnLine ? 'Yes' : 'No';
-            let userResult = correct ? 'Correct!' : 'Incorrect.';
-            renderLatex('latex-answer', `${answerLatex} \\ Is the point on the line?\\ \text{${result}} \\ \text{${userResult}}`);
+            let userResult = correct ? 'Correct' : 'Not correct';
+            renderLatex('latex-answer', `${answerLatex} \\ \\text{Is the point on the line?}\\ \\text{${result}} \\ \\text{Your answer: ${userResult}}`);
             document.getElementById('yes-btn').disabled = true;
             document.getElementById('no-btn').disabled = true;
         }
         function reveal() {
             state.revealed = true;
-            // Show answer if not already answered
-            if (!state.answered) {
-                let answerLatex = `y = ${state.m} \times ${state.x} ${state.b >= 0 ? '+' : ''}${state.b} = ${state.m * state.x + state.b}`;
-                let isOnLine = (state.y === state.m * state.x + state.b);
-                let result = isOnLine ? 'Yes' : 'No';
-                renderLatex('latex-answer', `${answerLatex} \\ Is the point on the line?\\ \text{${result}}`);
+            let answerLatex = `y = ${state.m} \\cdot ${state.x} ${state.b >= 0 ? '+ ' : '- '}${Math.abs(state.b)} = ${state.m * state.x + state.b}`;
+            let isOnLine = (state.y === state.m * state.x + state.b);
+            let result = isOnLine ? 'Yes' : 'No';
+            if (state.answered) {
+                let correct = (state.onLine && state.lastUserAnswer === 'yes') || (!state.onLine && state.lastUserAnswer === 'no');
+                let userResult = correct ? 'Correct' : 'Not correct';
+                renderLatex('latex-answer', `${answerLatex} \\ \\text{Is the point on the line?}\\ \\text{${result}} \\ \\text{Your answer: ${userResult}}`);
+            } else {
+                renderLatex('latex-answer', `${answerLatex} \\ \\text{Is the point on the line?}\\ \\text{${result}}`);
             }
             drawCanvas();
             document.getElementById('canvas').style.display = '';
