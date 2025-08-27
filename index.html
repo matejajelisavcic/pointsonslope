@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Point on Slope Game</title>
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+    <style>
+        body { font-family: Arial, sans-serif; text-align: center; margin: 0; padding: 0; background: #f7f7f7; }
+        .container { max-width: 600px; margin: 40px auto; background: #fff; border-radius: 10px; box-shadow: 0 2px 8px #ccc; padding: 30px; }
+        #canvas { background: #f0f0f0; border: 1px solid #ccc; margin: 20px 0; }
+        button { margin: 10px; padding: 10px 20px; font-size: 1rem; border-radius: 5px; border: none; background: #1976d2; color: #fff; cursor: pointer; }
+        button:disabled { background: #aaa; }
+        #latex-formula, #latex-point, #latex-answer { margin: 10px 0; font-size: 1.2rem; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>Is the Point on the Line?</h2>
+        <div id="latex-formula"></div>
+        <div id="latex-point"></div>
+        <div>
+            <button id="yes-btn">Yes</button>
+            <button id="no-btn">No</button>
+        </div>
+        <div>
+            <button id="reveal-btn">Reveal</button>
+        </div>
+        <div id="latex-answer"></div>
+        <canvas id="canvas" width="400" height="400" style="display:none;"></canvas>
+        <div>
+            <button id="again-btn" style="display:none;">Again</button>
+        </div>
+    </div>
+    <script>
+        // Utility functions
+        function getRandomInt(min, max) {
+            return Math.floor(Math.random() * (max - min + 1)) + min;
+        }
+        function randomSlopeFormula() {
+            // y = mx + b, m in [-5,5] \ {0}, b in [-10,10]
+            let m = 0;
+            while (m === 0) m = getRandomInt(-5, 5);
+            let b = getRandomInt(-10, 10);
+            return { m, b };
+        }
+        function randomPoint(m, b) {
+            // 50% chance to be on the line
+            let onLine = Math.random() < 0.5;
+            let x = getRandomInt(-8, 8);
+            let y = onLine ? m * x + b : m * x + b + getRandomInt(1, 5) * (Math.random() < 0.5 ? 1 : -1);
+            return { x, y, onLine };
+        }
+        // State
+        let state = {};
+        function newRound() {
+            state = {};
+            const { m, b } = randomSlopeFormula();
+            state.m = m;
+            state.b = b;
+            const pt = randomPoint(m, b);
+            state.x = pt.x;
+            state.y = pt.y;
+            state.onLine = pt.onLine;
+            state.answered = false;
+            state.revealed = false;
+            render();
+        }
+        function renderLatex(id, latex) {
+            const el = document.getElementById(id);
+            if (!latex) { el.innerHTML = ''; return; }
+            katex.render(latex, el, { throwOnError: false });
+        }
+        function render() {
+            renderLatex('latex-formula', `y = ${state.m}x ${state.b >= 0 ? '+' : ''}${state.b}`);
+            renderLatex('latex-point', `(${state.x},\;${state.y})`);
+            document.getElementById('latex-answer').innerHTML = '';
+            document.getElementById('canvas').style.display = 'none';
+            document.getElementById('again-btn').style.display = 'none';
+            document.getElementById('yes-btn').disabled = false;
+            document.getElementById('no-btn').disabled = false;
+            document.getElementById('reveal-btn').disabled = false;
+        }
+        function showAnswer(userAnswer) {
+            state.answered = true;
+            let correct = (state.onLine && userAnswer === 'yes') || (!state.onLine && userAnswer === 'no');
+            let answerLatex = `y = ${state.m} \times ${state.x} ${state.b >= 0 ? '+' : ''}${state.b} = ${state.m * state.x + state.b}`;
+            let isOnLine = (state.y === state.m * state.x + state.b);
+            let result = isOnLine ? 'Yes' : 'No';
+            let userResult = correct ? 'Correct!' : 'Incorrect.';
+            renderLatex('latex-answer', `${answerLatex} \\ Is the point on the line?\\ \text{${result}} \\ \text{${userResult}}`);
+            document.getElementById('yes-btn').disabled = true;
+            document.getElementById('no-btn').disabled = true;
+        }
+        function reveal() {
+            state.revealed = true;
+            // Show answer if not already answered
+            if (!state.answered) {
+                let answerLatex = `y = ${state.m} \times ${state.x} ${state.b >= 0 ? '+' : ''}${state.b} = ${state.m * state.x + state.b}`;
+                let isOnLine = (state.y === state.m * state.x + state.b);
+                let result = isOnLine ? 'Yes' : 'No';
+                renderLatex('latex-answer', `${answerLatex} \\ Is the point on the line?\\ \text{${result}}`);
+            }
+            drawCanvas();
+            document.getElementById('canvas').style.display = '';
+            document.getElementById('again-btn').style.display = '';
+            document.getElementById('reveal-btn').disabled = true;
+        }
+        function drawCanvas() {
+            const canvas = document.getElementById('canvas');
+            const ctx = canvas.getContext('2d');
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            // Coordinate system
+            const w = canvas.width, h = canvas.height;
+            const ox = w/2, oy = h/2;
+            const scale = 25; // 1 unit = 25px
+            // Draw grid
+            ctx.strokeStyle = '#ddd';
+            ctx.lineWidth = 1;
+            for (let i = -7; i <= 7; i++) {
+                ctx.beginPath();
+                ctx.moveTo(ox + i*scale, 0);
+                ctx.lineTo(ox + i*scale, h);
+                ctx.stroke();
+                ctx.beginPath();
+                ctx.moveTo(0, oy - i*scale);
+                ctx.lineTo(w, oy - i*scale);
+                ctx.stroke();
+            }
+            // Draw axes
+            ctx.strokeStyle = '#888';
+            ctx.lineWidth = 2;
+            ctx.beginPath(); ctx.moveTo(0, oy); ctx.lineTo(w, oy); ctx.stroke(); // x-axis
+            ctx.beginPath(); ctx.moveTo(ox, 0); ctx.lineTo(ox, h); ctx.stroke(); // y-axis
+            // Draw numbers
+            ctx.fillStyle = '#444';
+            ctx.font = '12px Arial';
+            for (let i = -7; i <= 7; i++) {
+                if (i !== 0) {
+                    ctx.fillText(i, ox + i*scale - 6, oy + 15);
+                    ctx.fillText(i, ox + 6, oy - i*scale + 4);
+                }
+            }
+            ctx.fillText('0', ox + 6, oy + 15);
+            // Draw line
+            ctx.strokeStyle = '#1976d2';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            let x1 = -8, x2 = 8;
+            let y1 = state.m * x1 + state.b;
+            let y2 = state.m * x2 + state.b;
+            ctx.moveTo(ox + x1*scale, oy - y1*scale);
+            ctx.lineTo(ox + x2*scale, oy - y2*scale);
+            ctx.stroke();
+            // Draw point
+            ctx.beginPath();
+            ctx.arc(ox + state.x*scale, oy - state.y*scale, 7, 0, 2*Math.PI);
+            ctx.fillStyle = state.onLine ? '#43a047' : '#e53935';
+            ctx.fill();
+            ctx.strokeStyle = '#222';
+            ctx.stroke();
+        }
+        document.getElementById('yes-btn').onclick = () => showAnswer('yes');
+        document.getElementById('no-btn').onclick = () => showAnswer('no');
+        document.getElementById('reveal-btn').onclick = reveal;
+        document.getElementById('again-btn').onclick = newRound;
+        // Initial round
+        newRound();
+    </script>
+</body>
+</html>
